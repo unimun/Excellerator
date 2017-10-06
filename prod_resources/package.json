@@ -1,0 +1,8 @@
+{
+    "name": "excellerator",
+    "productName": "Excellerator",
+    "version": "1.0.0",
+    "main": "js/main/index.js",
+    "description": "SRPrj",
+    "author": "dobby.han"
+}
