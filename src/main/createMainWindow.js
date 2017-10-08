@@ -28,6 +28,9 @@ class MainWindow {
             return resolve(directoryPath)
         })
     }
+    loadData(data) {
+        this.window.webContents.send("LOAD_DATA", data)
+    }
 }
 
 function createMainWindow() {

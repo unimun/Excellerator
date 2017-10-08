@@ -39,11 +39,13 @@ ipcMain.on('OPEN_DIR', (_e, directoryPath) => {
 ipcMain.on('EXCEL_LIST', (_e) => {
     const excelView = 1
     const listPath = path.join(rootDir, 'list.txt')
-    execFile(executablePath, ["--incognito"], (err, data) => {
+    // execFile(executablePath, [], (err, data) => {
+    exec(`cscript ${executablePath}`, (err, data) => {
         console.log(err)
         console.log(data.toString())
-        fileManager.readList(listPath)
-            .then((files) => mainWindow.sendFiles(excelView, files))
+        fileManager.readFileSync(listPath)
+            .then((files) => mainWindow.sendFiles(excelView, 
+                files.toString().split('\r\n')))
             .catch((error) => console.log(error))
     })
 })
@@ -55,11 +57,30 @@ ipcMain.on('WRITE_STAGED_FILES', (_e, files) => {
         .catch((error) => console.log(error))
 })
 
+ipcMain.on('SEND_FILE', (_e, view, file) => {
+    if ('files' in fileCached)
+        fileCached['files'][view] = file
+    else {
+        fileCached['files'] = [[],[],[],[]]
+        fileCached['files'][view] = file
+    }
+})
+
+ipcMain.on('SEND_SETTINGS', (_e, typeChecked) => {
+    fileCached['typeChecked'] = typeChecked
+})
+
+ipcMain.on("REQUEST_DATA", (_e) => {
+    mainWindow.loadData(fileCached)
+})
+
 const rootDir = path.join(__dirname, '../../')
+const cacheFilePath = path.join(rootDir, 'data.json')
 let mainWindow = null;
 let fileManager = null;
-let executablePath = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+let executablePath = path.join(rootDir, 'hello.vbs')
 
+let fileCached = { files: [[],[],[],[]], typeChecked: [false, false, false]}
 
 app.on("ready", () => {
     mainWindow = createMainWindow();
@@ -67,6 +88,15 @@ app.on("ready", () => {
     // BrowserWindow.addDevToolsExtension(path.join("C:/Users/Dongbin/AppData/Local/Google/Chrome/User Data/Default/Extensions/lmhkpmbekcpmknklioeibfkpmmfibljd/2.15.1_0"))
     setAppMenu({ openDirectory, saveFile, saveAsNewFile });
     fileManager = createFileManager();
+    fileManager.readFileSync(cacheFilePath)
+        .then((file) => {
+            try {
+                fileCached = JSON.parse(file)
+            } catch (error) {
+                console.log(error)
+            }
+        })
+        .catch(error => console.log(error))
     // installExtension(REDUX_DEVTOOLS)
     // .then((name) => console.log(`Added Extension:  ${name}`))
     // .catch((err) => console.log('An error occurred: ', err));
@@ -74,6 +104,8 @@ app.on("ready", () => {
 
 app.on("window-all-closed", () => {
     if (process.platform != "darwin") {
+        fileManager.saveData(cacheFilePath, 
+            JSON.stringify(fileCached, null, '\t'))
         app.quit();
     }
 });

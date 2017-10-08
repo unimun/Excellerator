@@ -2,6 +2,7 @@ import { createAction, handleActions } from 'redux-actions'
 import { Map } from 'immutable'
 import { List } from 'immutable'
 import { fromJS } from 'immutable'
+import { ipcRenderer } from 'electron'
 
 const SET_VIEW = 'explorer/SET_VIEW'
 const ADD_DIR = 'explorer/ADD_DIR'
@@ -10,6 +11,7 @@ const SELECT_FILE = 'explorer/SELECT_FILE'
 const UNSELECT_FILE = 'explorer/UNSELECT_FILE'
 const STAGE = 'explorer/STAGE'
 const UNSTAGE = 'explorer/UNSTAGE'
+const LOAD_DATA = 'explorer/LOAD_DATA'
 
 export const setView = createAction(SET_VIEW) // { view }
 export const addDir = createAction(ADD_DIR) // { directoryPath }
@@ -18,12 +20,17 @@ export const selectFile = createAction(SELECT_FILE) // { view, index }
 export const unselectFile = createAction(UNSELECT_FILE) // { view, index }
 export const stage = createAction(STAGE) // {}
 export const unstage = createAction(UNSTAGE) // {}
+export const loadData = createAction(LOAD_DATA) // { {files}, {checkedType}}
 
 const initialState = Map({
     view: 0,
-    files: List([List(['a', 'b']), List(['c', 'd']), List(['e', 'f']), List(['staged'])]),
+    files: List([List([]), List([]), List([]), List([])]),
     selected: List([List([]), List([]), List([]), List([])])
 })
+
+const sendFile = (view, files) => {
+    ipcRenderer.send("SEND_FILE", view, files)
+}
 
 export default handleActions({
     [SET_VIEW]: (state, action) => state.set('view', action.payload),
@@ -33,10 +40,12 @@ export default handleActions({
         let recentDirs = state.getIn(['files', recentView]).toJS()
         recentDirs.push(action.payload)
         if (recentDirs.length > maxDir) recentDirs.splice(0, 1)
+        sendFile(recentView, recentDirs)
         return state.setIn(['files', recentView], fromJS(recentDirs))
     },
     [SET_FILES]: (state, action) => {
         const { view, files } = action.payload
+        sendFile(view, files)
         return state.setIn(['files', view], fromJS(files))
     },
     [SELECT_FILE]: (state, action) => {
@@ -69,6 +78,7 @@ export default handleActions({
         const stageSet = new Set(files[stageView])
         files[stageView] = [...stageSet]
 
+        sendFile(stageView, files[stageView])
         return state.set('files', fromJS(files))
             .set('selected', fromJS(selected))
     },
@@ -82,7 +92,12 @@ export default handleActions({
 
         selected[stageView] = []
 
+        sendFile(stageView, files[stageView])
         return state.set('files', fromJS(files))
             .set('selected', fromJS(selected))
+    },
+    [LOAD_DATA]: (state, action) => {
+        const { files } = action.payload
+        return state.set('files', fromJS(files))
     },
     }, initialState)

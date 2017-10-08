@@ -9,7 +9,6 @@ class IpcListener extends React.Component {
     render () {
         return (
             <div/>
-            // <button >dfj</button>
         )
     }
     componentDidMount() {
@@ -27,13 +26,26 @@ class IpcListener extends React.Component {
         ipcRenderer.on("SEND_OK", (_e) => {
             console.log('got ok')
         })
+
+        ipcRenderer.on("LOAD_DATA", (_e, data) => {
+            const { ExplorerActions } = this.props
+            const { ConverterActions } = this.props
+            if ('files' in data)
+                ExplorerActions.loadData(data)
+            if ('typeChecked' in data)
+                ConverterActions.loadData(data)
+        })
+
+        ipcRenderer.send("REQUEST_DATA")
     }
 }
 
 export default connect(
-    undefined,
+    (state) => ({
+        files: state.explorer.get('files').toJS()
+    }),
     (dispatch) => ({
         ExplorerActions: bindActionCreators(explorerActions, dispatch),
-        // ConverterActions: bindActionCreators(converterActions, dispatch),
+        ConverterActions: bindActionCreators(converterActions, dispatch),
     }),
 )(IpcListener)
